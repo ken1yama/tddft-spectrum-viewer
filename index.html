@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TDDFT スペクトル</title>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#ffffff; --fg:#1d2330; --muted:#657089; --line:#dde1ea;
+  --accent:#2a6fdb; --accent-fg:#ffffff; --stick:#d9622b; --warn:#b3261e;
+  --head:#eef1f6; --hover:#f3f7ff; --input:#ffffff;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14171e; --card:#1c212b; --fg:#e6e9f0; --muted:#98a2b8; --line:#2d3442;
+    --accent:#6ea8ff; --accent-fg:#0d1320; --stick:#f08a55; --warn:#ff8a80;
+    --head:#242b38; --hover:#232b3a; --input:#161b24;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14171e; --card:#1c212b; --fg:#e6e9f0; --muted:#98a2b8; --line:#2d3442;
+  --accent:#6ea8ff; --accent-fg:#0d1320; --stick:#f08a55; --warn:#ff8a80;
+  --head:#242b38; --hover:#232b3a; --input:#161b24;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:20px;margin:0 0 2px}
+.sub{color:var(--muted);margin:0 0 16px;font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:14px;margin:0 0 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h2 .spacer{flex:1}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:18px;text-align:center;color:var(--muted);transition:.15s}
+.drop.over{border-color:var(--accent);background:var(--hover)}
+.drop b{color:var(--fg)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+.field input,.field select{font:inherit;font-size:14px;color:var(--fg);background:var(--input);border:1px solid var(--line);border-radius:6px;padding:5px 8px;width:110px}
+.field select{width:auto;min-width:96px}
+.field.check{flex-direction:row;align-items:center;gap:6px;height:32px;color:var(--fg)}
+.field.check input{width:auto}
+.combo{display:flex;gap:4px}
+.combo input{width:84px}
+button{font:inherit;font-size:13px;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:5px 11px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:disabled{opacity:.45;cursor:default}
+button.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.status{font-size:13px;color:var(--muted);margin-top:8px;min-height:20px}
+.status.err{color:var(--warn)}
+#chart{width:100%}
+#chart svg{width:100%;height:auto;display:block;touch-action:none}
+.empty{color:var(--muted);text-align:center;padding:60px 10px}
+#readout{font-size:12px;color:var(--muted);min-height:18px;font-variant-numeric:tabular-nums}
+.tablewrap{max-height:540px;overflow:auto;border:1px solid var(--line);border-radius:6px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{padding:5px 9px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{position:sticky;top:0;background:var(--head);font-weight:600;white-space:nowrap;z-index:1}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.c{min-width:180px}
+td.minor{color:var(--muted)}
+tbody tr:hover{background:var(--hover)}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+progress{width:100%;height:6px;margin-top:8px}
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px 18px}
+.kv .it{min-width:0}
+.kv .k{font-size:11.5px;color:var(--muted)}
+.kv .v{font-size:13.5px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.kv .wide{grid-column:1/-1}
+.kv .mono{font-family:ui-monospace,SFMono-Regular,Consolas,Menlo,monospace;font-size:12.5px;background:var(--head);border-radius:6px;padding:6px 8px}
+.kv .bad{color:var(--warn)}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.top>div:first-child{flex:1 1 auto;min-width:0}
+.lang{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:none}
+.lang button{border:0;border-radius:0;background:var(--card);padding:5px 12px}
+.lang button+button{border-left:1px solid var(--line)}
+.lang button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.rowlabel{align-self:center}
+@media (max-width:560px){ .field input{width:96px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1 data-i18n="title"></h1>
+      <p class="sub" data-i18n="sub"></p>
+    </div>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="ja">日本語</button><button type="button" data-lang="en">English</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="drop" id="drop">
+      <div><b data-i18n="dropMain"></b></div>
+      <div style="margin-top:8px"><button class="primary" id="pick" data-i18n="pick"></button></div>
+      <input type="file" id="file" hidden>
+    </div>
+    <progress id="prog" max="1" value="0" hidden></progress>
+    <div class="status" id="status"></div>
+    <div class="row" id="blockRow" hidden style="margin-top:6px">
+      <label class="field"><span data-i18n="block"></span>
+        <select id="block"></select>
+      </label>
+    </div>
+  </div>
+
+  <div class="card" id="infoCard" hidden>
+    <h2 data-i18n="infoTitle"></h2>
+    <div class="kv" id="info"></div>
+  </div>
+
+  <div class="card">
+    <h2 data-i18n="setTitle"></h2>
+    <div class="row">
+      <label class="field"><span data-i18n="unit"></span>
+        <select id="unit"><option value="nm" data-i18n="uNm"></option><option value="ev" data-i18n="uEv"></option><option value="cm" data-i18n="uCm"></option></select>
+      </label>
+      <label class="field"><span data-i18n="left"></span><input type="number" id="xmin" step="any" value="200"></label>
+      <label class="field"><span data-i18n="right"></span><input type="number" id="xmax" step="any" value="800"></label>
+      <label class="field check" data-i18n-title="revTip"><input type="checkbox" id="rev"><span data-i18n="rev"></span></label>
+      <label class="field"><span>FWHM</span>
+        <span class="combo"><input type="number" id="fwhm" step="any" min="0" value="3000">
+        <select id="fwhmUnit"><option value="cm">cm⁻¹</option><option value="ev">eV</option></select></span>
+      </label>
+      <label class="field"><span data-i18n="profile"></span>
+        <select id="profile"><option value="g" data-i18n="pG"></option><option value="l" data-i18n="pL"></option></select>
+      </label>
+      <label class="field"><span data-i18n="thr"></span><input type="number" id="thr" step="1" min="0" max="100" value="10"></label>
+      <label class="field check"><input type="checkbox" id="sticks" checked><span data-i18n="sticks"></span></label>
+      <button id="auto" disabled data-i18n="auto"></button>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <span class="field rowlabel" data-i18n="yRange"></span>
+      <label class="field"><span data-i18n="yMax"></span><input type="number" id="yMax" step="any" min="0" data-i18n-ph="autoPh"></label>
+      <label class="field"><span data-i18n="fMax"></span><input type="number" id="fMax" step="any" min="0" data-i18n-ph="autoPh"></label>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <span class="field rowlabel" data-i18n="fig"></span>
+      <label class="field"><span data-i18n="figW"></span><input type="number" id="figW" step="10" min="300" max="3000" value="900"></label>
+      <label class="field"><span data-i18n="figH"></span><input type="number" id="figH" step="10" min="200" max="2000" value="500"></label>
+      <label class="field"><span data-i18n="fsTick"></span><input type="number" id="fsTick" step="1" min="6" max="48" value="13"></label>
+      <label class="field"><span data-i18n="fsLabel"></span><input type="number" id="fsLabel" step="1" min="6" max="48" value="14"></label>
+      <button id="figReset" data-i18n="figReset"></button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span data-i18n="spectrum"></span>
+      <span class="spacer"></span>
+      <span class="btns">
+        <button id="dlPng" disabled>PNG</button>
+        <button id="dlSvg" disabled>SVG</button>
+        <button id="dlSpec" disabled data-i18n="dlSpec"></button>
+      </span>
+    </h2>
+    <div id="chart"></div>
+    <div id="readout"></div>
+  </div>
+
+  <div class="card">
+    <h2><span data-i18n="trans"></span> <span id="count" style="color:var(--muted);font-weight:400"></span>
+      <span class="spacer"></span>
+      <span class="btns">
+        <button id="dlCsv" disabled>CSV</button>
+      </span>
+    </h2>
+    <div class="tablewrap"><table id="tbl"><thead><tr>
+      <th>No.</th><th>Energy (cm⁻¹)</th><th>Energy (eV)</th><th>Wavelength (nm)</th><th>Osc. Strength</th><th>Symmetry</th><th>Major contribs</th><th>Minor contribs</th>
+    </tr></thead><tbody></tbody></table></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ================= 定数・単位 ================= */
+const EV_TO_CM = 8065.543937;            // 1 eV = 8065.54 cm^-1
+const toCm   = { nm: x => 1e7 / x, ev: x => x * EV_TO_CM, cm: x => x * 1000 };
+const fromCm = { nm: v => 1e7 / v, ev: v => v / EV_TO_CM, cm: v => v / 1000 };
+const UNIT_LABEL = { nm: 'Wavelength (nm)', ev: 'Energy (eV)', cm: 'Wavenumber (10³ cm⁻¹)' };
+const UNIT_DEC   = { nm: 1, ev: 4, cm: 3 };
+
+/* ================= パーサ ================= */
+const RE_ES = /^\s*Excited State\s+(\d+):\s+(\S+)\s+(-?\d+\.\d+)\s+eV\s+(-?\d+\.\d+)\s+nm\s+f=(-?\d+\.\d+)\s+<S\*\*2>=(-?\d+\.\d+)/;
+const RE_TR = /^\s+(\d+)([AB]?)\s*->\s*(\d+)([AB]?)\s+(-?\d+\.\d+)\s*$/;
+const RE_EL = /^\s*(\d+) alpha electrons\s+(\d+) beta electrons/;
+const RE_UV = /^(\d+)\t([-\d.eE+]+)\t([-\d.eE+]+)\t([-\d.eE+]+)\t([^\t]*)\t([^\t]*)\t?(.*)$/;
+
+const RE_SCF = /SCF Done:\s+E\((\S+)\)\s+=\s+(-?\d+\.\d+)/;
+const RE_NUM = /=\s+(-?\d+\.\d+)/;
+const LATE = ['term', 'elapsed', 'zpc', 'ezpe', 'enth', 'gibbs', 'hasFreq', 'nimag', 'optDone'];
+
+class Parser {
+  constructor() {
+    this.nalpha = null; this.nbeta = null;
+    this.groups = []; this.group = null; this.cur = null; this.lastN = Infinity;
+    this.job = {}; this.ver = null; this.rs = 0; this.routeBuf = [];
+  }
+  newGroup(pre) {
+    this.group = { states: [], nalpha: this.nalpha, nbeta: this.nbeta, pre: !!pre,
+                   info: { ...this.job, ver: this.ver }, job: this.job };
+    this.groups.push(this.group); this.lastN = 0;
+  }
+  // 計算条件（ルート行・電荷・SCF エネルギーなど）
+  meta(s) {
+    const j = this.job;
+    if (s.startsWith(' SCF Done:')) { const m = RE_SCF.exec(s); if (m) { j.scfLabel = m[1]; j.scf = parseFloat(m[2]); } }
+    else if (s.startsWith(' Charge =')) { const m = /Charge =\s*(-?\d+)\s+Multiplicity =\s*(\d+)/.exec(s); if (m) { j.charge = +m[1]; j.mult = +m[2]; } }
+    else if (s.startsWith(' Stoichiometry')) j.formula = s.slice(14).trim();
+    else if (s.includes('Full point group')) { const m = /Full point group\s+(\S+)/.exec(s); if (m) j.pg = m[1]; }
+    else if (s.includes('NBasis=')) { const m = /NBasis=\s*(\d+)/.exec(s); if (m) j.nbasis = +m[1]; }
+    else if (s.includes('Standard basis:')) j.stdBasis = s.slice(s.indexOf(':') + 1).trim();
+    else if (s.startsWith(' Gaussian ')) { const m = /^ Gaussian (\d\d):\s+(\S.*)$/.exec(s); if (m) this.ver = `Gaussian ${m[1]} ${m[2].trim()}`; }
+    else if (s.includes('Total Energy, E(TD')) {
+      const m = RE_NUM.exec(s);
+      if (m && this.group && !this.group.pre) { this.group.tdE = parseFloat(m[1]); this.group.tdN = this.lastN; }
+    }
+    else if (s.startsWith(' Normal termination')) j.term = 'ok';
+    else if (s.startsWith(' Error termination')) j.term = 'error';
+    else if (s.startsWith(' Elapsed time:')) {
+      const m = /(\d+) days\s+(\d+) hours\s+(\d+) minutes\s+([\d.]+) seconds/.exec(s);
+      if (m) j.elapsed = { d: +m[1], h: +m[2], m: +m[3] };
+    }
+    else if (s.startsWith(' Zero-point correction=')) { const m = RE_NUM.exec(s); if (m) j.zpc = parseFloat(m[1]); }
+    else if (s.startsWith(' Sum of electronic and')) {
+      const m = RE_NUM.exec(s);
+      if (m) {
+        const v = parseFloat(m[1]);
+        if (s.includes('zero-point')) j.ezpe = v; else if (s.includes('Enthalpies')) j.enth = v; else if (s.includes('Free Energies')) j.gibbs = v;
+      }
+    }
+    else if (s.includes('Frequencies --')) {
+      j.hasFreq = true;
+      for (const t of s.slice(s.indexOf('--') + 2).trim().split(/\s+/)) if (parseFloat(t) < 0) j.nimag = (j.nimag || 0) + 1;
+    }
+    else if (s.includes('Optimization completed')) j.optDone = true;
+  }
+  line(s) {
+    // ルート行: ダッシュ線の直後の '#' で始まる行（複数行に続くことがある）
+    if (this.rs === 2) {
+      if (s.startsWith(' ---')) { this.rs = 0; this.job.route = this.routeBuf.join(' ').replace(/\s+/g, ' ').trim(); }
+      else { this.routeBuf.push(s.trim()); return; }
+    } else if (this.rs === 1) {
+      this.rs = 0;
+      if (s.trimStart().startsWith('#')) { this.job = {}; this.rs = 2; this.routeBuf = [s.trim()]; return; }
+    }
+    if (s.startsWith(' ---')) { this.rs = 1; return; }
+
+    if (this.cur) {
+      const m = s.includes('->') ? RE_TR.exec(s) : null;
+      if (m) {
+        this.cur.tr.push({ from: +m[1], to: +m[3], sp: m[2] || m[4], c: parseFloat(m[5]) });
+        return;
+      }
+      if (s.includes('<-')) return;            // 脱励起 (Y) 成分は無視
+      if (s.trim() !== '') this.cur = null;
+    }
+    if (s.includes('Excited State ')) {
+      const m = RE_ES.exec(s);
+      if (!m) return;
+      const n = +m[1];
+      if (!this.group || this.group.pre || n <= this.lastN) this.newGroup(false);
+      this.lastN = n;
+      this.cur = { n, sym: m[2], ev: parseFloat(m[3]), nm: parseFloat(m[4]), f: parseFloat(m[5]), s2: parseFloat(m[6]), tr: [] };
+      this.group.states.push(this.cur);
+      return;
+    }
+    if (s.includes(' alpha electrons')) {
+      const m = RE_EL.exec(s);
+      if (m) { this.nalpha = +m[1]; this.nbeta = +m[2]; }
+      return;
+    }
+    if (s.charCodeAt(0) === 32) { this.meta(s); return; }
+    // GaussSum の UVData.txt 形式
+    if (s.startsWith('HOMO is ')) {
+      this.nalpha = this.nbeta = parseInt(s.slice(8), 10);
+      this.newGroup(true); return;
+    }
+    if (this.group && this.group.pre) {
+      const c = s.charCodeAt(0);
+      if (c >= 48 && c <= 57 && s.includes('\t')) {
+        const m = RE_UV.exec(s);
+        if (m) {
+          const cm = parseFloat(m[2]);
+          this.group.states.push({ n: +m[1], cm, ev: cm / EV_TO_CM, nm: parseFloat(m[3]), f: parseFloat(m[4]),
+            sym: m[5], major: m[6].trim(), minor: m[7].trim() });
+        }
+      }
+    }
+  }
+  finish() { return this.groups.filter(g => g.states.length > 0); }
+}
+
+async function parseFile(file, onProgress) {
+  const p = new Parser();
+  const reader = file.stream().getReader();
+  const dec = new TextDecoder('utf-8');
+  let buf = '', read = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    read += value.length;
+    buf += dec.decode(value, { stream: true });
+    let start = 0, i;
+    while ((i = buf.indexOf('\n', start)) >= 0) {
+      p.line(buf.slice(start, i).replace(/\r$/, ''));
+      start = i + 1;
+    }
+    buf = buf.slice(start);
+    if (onProgress) onProgress(read / Math.max(1, file.size));
+  }
+  buf += dec.decode();
+  if (buf) p.line(buf);
+  return p.finish();
+}
+
+/* ================= 遷移テーブル ================= */
+function moLabel(idx, homo, spin) {
+  let s;
+  if (homo == null) s = String(idx);
+  else if (idx <= homo) { const d = homo - idx; s = d === 0 ? 'HOMO' : 'H-' + d; }
+  else { const d = idx - homo - 1; s = d === 0 ? 'LUMO' : 'L+' + d; }
+  return s + (spin ? (spin === 'A' ? '(α)' : '(β)') : '');
+}
+
+function buildRows(group, thr) {
+  if (group.pre) return group.states.map(s => ({ ...s }));
+  const open = group.states.some(s => s.tr.some(t => t.sp));
+  return group.states.map(s => {
+    const cm = s.ev * EV_TO_CM;
+    const major = [], minor = [];
+    for (const t of s.tr) {
+      const pct = Math.round((open ? 1 : 2) * t.c * t.c * 100);
+      const homo = t.sp === 'B' ? group.nbeta : group.nalpha;
+      const sp = open ? t.sp : '';
+      const lab = moLabel(t.from, homo, sp) + '->' + moLabel(t.to, homo, sp);
+      (pct >= thr ? major : minor).push(`${lab} (${pct}%)`);
+    }
+    return { n: s.n, cm, ev: s.ev, nm: cm > 0 ? 1e7 / cm : Infinity, f: s.f, sym: s.sym,
+             major: major.join(', '), minor: minor.join(', ') };
+  });
+}
+
+/* ================= スペクトル計算 ================= */
+const SQRT_PI = Math.sqrt(Math.PI);
+function computeSpectrum(rows, xmin, xmax, fwhmCm, profile, unit, N = 1600) {
+  const xs = new Array(N), ys = new Array(N);
+  const sigma = fwhmCm / (2 * Math.sqrt(Math.LN2));
+  const gamma = fwhmCm / 2;
+  const pk = rows.filter(r => r.cm > 0 && r.f > 0);
+  for (let k = 0; k < N; k++) {
+    const x = xmin + (xmax - xmin) * k / (N - 1);
+    const v = toCm[unit](x);
+    let sum = 0;
+    for (const r of pk) {
+      const d = v - r.cm;
+      if (profile === 'g') {
+        // ε = 1.3062974e8 · f / σ · exp(-((ν-ν_i)/σ)^2)   (GaussSum / SWizard と同じ)
+        sum += 1.3062974e8 * r.f / sigma * Math.exp(-(d / sigma) * (d / sigma));
+      } else {
+        sum += 1.3062974e8 * SQRT_PI * r.f * (gamma / Math.PI) / (d * d + gamma * gamma);
+      }
+    }
+    xs[k] = x; ys[k] = sum;
+  }
+  return { xs, ys };
+}
+
+/* ================= SVG 描画 ================= */
+const PAL_LIGHT = { bg: '#ffffff', fg: '#1d2330', grid: '#e4e7ee', axis: '#1d2330', line: '#2a6fdb', stick: '#d9622b' };
+const PAL_DARK  = { bg: '#1c212b', fg: '#e6e9f0', grid: '#2d3442', axis: '#98a2b8', line: '#6ea8ff', stick: '#f08a55' };
+
+function niceTicks(lo, hi, n) {
+  const span = hi - lo || 1, raw = span / n;
+  const p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+  const step = (f < 1.5 ? 1 : f < 3.2 ? 2 : f < 7 ? 5 : 10) * p;
+  const ticks = [];
+  for (let v = Math.ceil(lo / step - 1e-9) * step; v <= hi + step * 1e-9; v += step) ticks.push(+v.toPrecision(12));
+  return { ticks, step, dec: Math.max(0, -Math.floor(Math.log10(step) + 1e-9)) };
+}
+function axisFromZero(maxRaw, n, fixed) {
+  if (fixed > 0) { const f = niceTicks(0, fixed, n); return { max: fixed, ticks: f.ticks, dec: f.dec }; }
+  const t = niceTicks(0, maxRaw, n);
+  const max = Math.ceil(maxRaw * 1.04 / t.step - 1e-9) * t.step;
+  const ticks = []; for (let v = 0; v <= max + t.step * 1e-9; v += t.step) ticks.push(+v.toPrecision(12));
+  return { max, ticks, dec: t.dec };
+}
+const fmtTick = (v, dec) => Math.abs(v) >= 10000 ? v.toLocaleString('en-US') : v.toFixed(dec);
+
+function buildSVG(pal, o, forExport) {
+  const W = o.W, H = o.H, ft = o.fsTick, fl = o.fsLabel;
+  const ya = axisFromZero(Math.max(...o.ys, 1e-9), 5, o.yMax);
+  const inRange = o.sticks.filter(s => s.x >= o.xmin && s.x <= o.xmax && s.f > 0);
+  const fa = axisFromZero(Math.max(...inRange.map(s => s.f), 1e-9), 5, o.fMax);
+  const xt = niceTicks(o.xmin, o.xmax, Math.max(3, Math.round(W / (ft * 6.5))));
+  const cw = ft * 0.6;                                    // 数字1文字の幅の目安
+  const yChars = Math.max(...ya.ticks.map(v => fmtTick(v, ya.dec).length));
+  const fChars = Math.max(...fa.ticks.map(v => fmtTick(v, fa.dec).length));
+  const m = {
+    l: Math.round(fl * 1.3 + 14 + yChars * cw + 6),
+    r: o.showSticks ? Math.round(fl * 1.3 + 16 + fChars * cw + 10) : Math.round(ft * 1.2 + 8),
+    t: Math.round(ft * 0.6 + 8),
+    b: Math.round(ft * 1.2 + 12 + fl * 1.3 + 10),
+  };
+  const pw = Math.max(50, W - m.l - m.r), ph = Math.max(50, H - m.t - m.b);
+  const X = o.rev ? (v => m.l + (o.xmax - v) / (o.xmax - o.xmin) * pw)
+                  : (v => m.l + (v - o.xmin) / (o.xmax - o.xmin) * pw);
+  const Y = v => m.t + ph - v / ya.max * ph;
+  const YF = v => m.t + ph - v / fa.max * ph;
+  const ff = `font-family="Helvetica, Arial, sans-serif"`;
+  const tk = Math.max(4, Math.round(ft * 0.4));            // 目盛り線の長さ
+  const lw = Math.max(1, Math.round(Math.min(W, H) / 250 * 10) / 10);
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}"${forExport ? ` width="${W}" height="${H}"` : ''} ${ff} font-size="${ft}" fill="${pal.fg}">`;
+  if (forExport) s += `<rect width="${W}" height="${H}" fill="${pal.bg}"/>`;
+  for (const v of ya.ticks) {
+    const y = Y(v).toFixed(1);
+    s += `<line x1="${m.l}" x2="${m.l + pw}" y1="${y}" y2="${y}" stroke="${pal.grid}"/>`;
+    s += `<text x="${m.l - 8}" y="${(+y + ft * 0.35).toFixed(1)}" text-anchor="end">${fmtTick(v, ya.dec)}</text>`;
+  }
+  for (const v of xt.ticks) {
+    const x = X(v).toFixed(1);
+    s += `<line x1="${x}" x2="${x}" y1="${m.t + ph}" y2="${m.t + ph + tk}" stroke="${pal.axis}"/>`;
+    s += `<text x="${x}" y="${(m.t + ph + tk + ft + 2).toFixed(1)}" text-anchor="middle">${fmtTick(v, xt.dec)}</text>`;
+  }
+  s += `<clipPath id="clipP"><rect x="${m.l}" y="${m.t}" width="${pw}" height="${ph}"/></clipPath>`;
+  if (o.showSticks) {
+    s += `<g clip-path="url(#clipP)">`;
+    for (const st of inRange) {
+      const x = X(st.x).toFixed(1);
+      s += `<line x1="${x}" x2="${x}" y1="${YF(0).toFixed(1)}" y2="${YF(st.f).toFixed(1)}" stroke="${pal.stick}" stroke-width="${lw}"/>`;
+    }
+    s += `</g>`;
+    const xr = m.l + pw;
+    s += `<line x1="${xr}" x2="${xr}" y1="${m.t}" y2="${m.t + ph}" stroke="${pal.stick}"/>`;
+    for (const v of fa.ticks) {
+      const y = YF(v).toFixed(1);
+      s += `<line x1="${xr}" x2="${xr + tk}" y1="${y}" y2="${y}" stroke="${pal.stick}"/>`;
+      s += `<text x="${xr + tk + 4}" y="${(+y + ft * 0.35).toFixed(1)}" fill="${pal.stick}">${fmtTick(v, fa.dec)}</text>`;
+    }
+    s += `<text transform="translate(${W - fl - 4} ${m.t + ph / 2}) rotate(90)" text-anchor="middle" fill="${pal.stick}" font-size="${fl}">${19 * fl * 0.55 < ph ? 'Oscillator strength' : 'f'}</text>`;
+  }
+  let d = '';
+  for (let k = 0; k < o.xs.length; k++) d += (k ? 'L' : 'M') + X(o.xs[k]).toFixed(1) + ' ' + Y(o.ys[k]).toFixed(1);
+  s += `<path clip-path="url(#clipP)" d="${d}" fill="none" stroke="${pal.line}" stroke-width="${lw * 1.4}" stroke-linejoin="round"/>`;
+  s += `<line x1="${m.l}" x2="${m.l}" y1="${m.t}" y2="${m.t + ph}" stroke="${pal.axis}"/>`;
+  s += `<line x1="${m.l}" x2="${m.l + pw}" y1="${m.t + ph}" y2="${m.t + ph}" stroke="${pal.axis}"/>`;
+  s += `<text x="${m.l + pw / 2}" y="${H - 10}" text-anchor="middle" font-size="${fl}">${UNIT_LABEL[o.unit]}</text>`;
+  s += `<text transform="translate(${fl * 0.95 + 6} ${m.t + ph / 2}) rotate(-90)" text-anchor="middle" font-size="${fl}">ε (M⁻¹ cm⁻¹)</text>`;
+  s += `<g id="cursorG" display="none"><line id="cursorL" y1="${m.t}" y2="${m.t + ph}" stroke="${pal.fg}" stroke-opacity=".45" stroke-dasharray="4 3"/><circle id="cursorC" r="3.5" fill="${pal.line}"/></g>`;
+  s += `</svg>`;
+  return { svg: s, geom: { W, H, m, pw, ph, X, Y, rev: o.rev, yAxisMax: ya.max, fAxisMax: fa.max } };
+}
+
+/* ================= 言語 / i18n ================= */
+const I18N = {
+  ja: {
+    docTitle: 'TDDFT スペクトル', title: 'TDDFT スペクトル',
+    sub: 'Gaussian の TDDFT 出力（.out / .log）から遷移テーブルと UV-Vis スペクトルを作成します。ファイルはブラウザ内だけで処理され、外部には送信されません。',
+    dropMain: 'ここに out / log ファイルをドロップ、または', pick: 'ファイルを選択…',
+    block: '計算ブロック（最適化の各ステップなど）',
+    infoTitle: '計算の詳細', setTitle: 'スペクトル設定',
+    unit: '横軸の単位', uNm: '波長 (nm)', uEv: 'エネルギー (eV)', uCm: '波数 (10³ cm⁻¹)',
+    left: '左端', right: '右端', rev: '横軸を反転',
+    revTip: '左端と右端の値を入れ替えます（左端 > 右端 のとき反転表示）',
+    fwhm: 'FWHM', profile: 'ピーク形状', pG: 'ガウス型', pL: 'ローレンツ型',
+    thr: '主要寄与のしきい値 (%)', sticks: '振動子強度の棒', auto: '範囲を自動調整',
+    yRange: '縦軸の範囲', yMax: 'ε の最大値', fMax: 'f（振動子強度）の最大値', autoPh: '自動',
+    fig: '図の体裁', figW: '幅 (px)', figH: '高さ (px)', fsTick: '目盛り数字 (px)', fsLabel: '軸ラベル (px)', figReset: '初期値に戻す',
+    spectrum: 'スペクトル', dlSpec: 'スペクトル CSV',
+    emptyChart: 'ファイルを読み込むとスペクトルが表示されます',
+    noExcited: 'TDDFT の励起状態（Excited State）が見つかりませんでした',
+    trans: '遷移テーブル', count: '（{0} 状態）',
+    parsing: '{0} を解析中…',
+    noExcitedStatus: 'このファイルには励起状態の記述がありません。TD 計算の出力か確認してください。',
+    blockOpt: '#{0}（{1} 状態）',
+    homoOpen: 'α電子 {0}, β電子 {1}', homoUnknown: 'HOMO 番号不明（軌道は番号で表示）',
+    loaded: '{0}：{1} ブロック検出{2}、{3} 状態、{4}', lastBlock: '（最後のブロックを表示中）',
+    loadFail: '読み込みに失敗しました: {0}',
+    errNum: '左端・右端に数値を入力してください。', errEq: '左端と右端に異なる値を入力してください。',
+    errNm: '波長は 0 より大きい値にしてください。', errFwhm: 'FWHM は 0 より大きい値にしてください。',
+    i_file: 'ファイル', i_prog: 'プログラム', i_route: 'ルート行', i_func: '汎関数 / 手法', i_basis: '基底関数',
+    i_gen: '（入力で指定）', i_scrf: '溶媒モデル (SCRF)', i_charge: '電荷', i_mult: 'スピン多重度',
+    i_formula: '分子式', i_pg: '点群', i_nbasis: '基底関数の数', i_nel: '電子数 (α / β)', i_homo: 'HOMO の軌道番号',
+    i_nst: '励起状態の数', i_scf: 'SCF エネルギー E({0})', i_td: '励起状態 {0} の全エネルギー E(TD)',
+    i_zpc: '零点補正 (ZPE)', i_ezpe: 'E + ZPE', i_enth: 'エンタルピー H', i_gibbs: 'ギブズエネルギー G',
+    i_nimag: '虚振動数', i_nimag0: '0 個（極小点）', i_nimagN: '{0} 個', i_opt: '構造最適化', i_optOk: '収束',
+    i_term: '終了状態', tOk: '正常終了', tErr: '異常終了', tNone: '終了記録なし（途中までのログ）',
+    i_elapsed: '経過時間', elapsed: '{0}{1}時間 {2}分', days: '{0}日 ',
+    i_note: '備考', noteUV: 'GaussSum 形式のテーブルのため、計算条件の情報はありません',
+  },
+  en: {
+    docTitle: 'TDDFT Spectrum', title: 'TDDFT Spectrum',
+    sub: 'Create a transition table and a UV-Vis spectrum from the TDDFT output (.out / .log) of Gaussian. Files are processed entirely in your browser and are never uploaded.',
+    dropMain: 'Drop an out / log file here, or', pick: 'Choose file…',
+    block: 'Calculation block (e.g. each optimization step)',
+    infoTitle: 'Calculation details', setTitle: 'Spectrum settings',
+    unit: 'X-axis unit', uNm: 'Wavelength (nm)', uEv: 'Energy (eV)', uCm: 'Wavenumber (10³ cm⁻¹)',
+    left: 'Left edge', right: 'Right edge', rev: 'Reverse x-axis',
+    revTip: 'Swaps the left and right values (the axis is reversed when left > right)',
+    fwhm: 'FWHM', profile: 'Band shape', pG: 'Gaussian', pL: 'Lorentzian',
+    thr: 'Major-contribution threshold (%)', sticks: 'Show oscillator-strength bars', auto: 'Auto range',
+    yRange: 'Y-axis range', yMax: 'ε max', fMax: 'f (oscillator strength) max', autoPh: 'auto',
+    fig: 'Figure', figW: 'Width (px)', figH: 'Height (px)', fsTick: 'Tick font (px)', fsLabel: 'Label font (px)', figReset: 'Reset',
+    spectrum: 'Spectrum', dlSpec: 'Spectrum CSV',
+    emptyChart: 'Load a file to display the spectrum',
+    noExcited: 'No TDDFT excited states ("Excited State") were found',
+    trans: 'Transitions', count: '({0} states)',
+    parsing: 'Parsing {0}…',
+    noExcitedStatus: 'This file contains no excited states. Please check that it is the output of a TD calculation.',
+    blockOpt: '#{0} ({1} states)',
+    homoOpen: 'α electrons {0}, β electrons {1}', homoUnknown: 'HOMO unknown (orbitals shown by number)',
+    loaded: '{0}: {1} block(s) found{2}, {3} states, {4}', lastBlock: ' (showing the last block)',
+    loadFail: 'Failed to load: {0}',
+    errNum: 'Enter numbers for the left and right edges.', errEq: 'The left and right edges must be different.',
+    errNm: 'Wavelength must be greater than 0.', errFwhm: 'FWHM must be greater than 0.',
+    i_file: 'File', i_prog: 'Program', i_route: 'Route', i_func: 'Functional / method', i_basis: 'Basis set',
+    i_gen: ' (specified in input)', i_scrf: 'Solvent model (SCRF)', i_charge: 'Charge', i_mult: 'Spin multiplicity',
+    i_formula: 'Formula', i_pg: 'Point group', i_nbasis: 'Number of basis functions', i_nel: 'Electrons (α / β)', i_homo: 'HOMO orbital number',
+    i_nst: 'Number of excited states', i_scf: 'SCF energy E({0})', i_td: 'Total energy E(TD) of excited state {0}',
+    i_zpc: 'Zero-point correction', i_ezpe: 'E + ZPE', i_enth: 'Enthalpy H', i_gibbs: 'Gibbs energy G',
+    i_nimag: 'Imaginary frequencies', i_nimag0: '0 (minimum)', i_nimagN: '{0}', i_opt: 'Geometry optimization', i_optOk: 'Converged',
+    i_term: 'Termination', tOk: 'Normal', tErr: 'Error', tNone: 'No termination record (incomplete log)',
+    i_elapsed: 'Elapsed time', elapsed: '{0}{1} h {2} min', days: '{0} d ',
+    i_note: 'Note', noteUV: 'This is a GaussSum-format table, so no calculation details are available',
+  },
+};
+let LANG = 'ja';
+const t = (k, ...a) => {
+  let s = I18N[LANG][k] ?? I18N.en[k] ?? k;
+  a.forEach((v, i) => { s = s.split('{' + i + '}').join(v); });
+  return s;
+};
+
+/* ================= アプリ ================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const S = { groups: [], gi: 0, rows: [], fileName: '', unit: 'nm', spec: null, first: true, statusFn: null, statusErr: false, emptyKey: 'emptyChart' };
+
+const darkPref = () => {
+  const t = document.documentElement.dataset.theme;
+  if (t) return t === 'dark';
+  return window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+};
+
+function setStatus(fn, err) { S.statusFn = fn; S.statusErr = !!err; renderStatus(); }
+function renderStatus() { const e = $('status'); e.textContent = S.statusFn ? S.statusFn() : ''; e.className = 'status' + (S.statusErr ? ' err' : ''); }
+const fwhmCm = () => { const v = parseFloat($('fwhm').value); return $('fwhmUnit').value === 'ev' ? v * EV_TO_CM : v; };
+const baseName = () => (S.fileName || 'spectrum').replace(/\.[^.]+$/, '');
+const emptyMsg = (key, warn) => `<div class="empty"${warn ? ' style="color:var(--warn)"' : ''}>${esc(t(key))}</div>`;
+
+function renderTable() {
+  const body = $('tbl').tBodies[0];
+  body.innerHTML = S.rows.map(r =>
+    `<tr><td class="num">${r.n}</td><td class="num">${r.cm.toFixed(2)}</td><td class="num">${r.ev.toFixed(4)}</td>` +
+    `<td class="num">${isFinite(r.nm) ? r.nm.toFixed(2) : '–'}</td><td class="num">${r.f.toFixed(4)}</td><td>${esc(r.sym)}</td>` +
+    `<td class="c">${esc(r.major)}</td><td class="c minor">${esc(r.minor)}</td></tr>`).join('');
+  $('count').textContent = S.rows.length ? t('count', S.rows.length) : '';
+}
+
+const clamp = (v, lo, hi, def) => { v = parseFloat(v); return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : def; };
+const posOrNull = v => { v = parseFloat(v); return v > 0 ? v : null; };
+const FIG_DEFAULT = { figW: 900, figH: 500, fsTick: 13, fsLabel: 14 };
+
+function renderChart() {
+  const box = $('chart');
+  if (!S.rows.length) { box.innerHTML = emptyMsg(S.emptyKey); return; }
+  const unit = $('unit').value;
+  const left = parseFloat($('xmin').value), right = parseFloat($('xmax').value), fw = fwhmCm();
+  const xmin = Math.min(left, right), xmax = Math.max(left, right), rev = left > right;
+  let bad = null;
+  if (!isFinite(left) || !isFinite(right)) bad = 'errNum';
+  else if (left === right) bad = 'errEq';
+  else if (unit === 'nm' && xmin <= 0) bad = 'errNm';
+  else if (!(fw > 0)) bad = 'errFwhm';
+  if (bad) { box.innerHTML = emptyMsg(bad, true); S.spec = null; updateButtons(); return; }
+  $('rev').checked = rev;
+
+  const { xs, ys } = computeSpectrum(S.rows, xmin, xmax, fw, $('profile').value, unit);
+  const sticks = S.rows.map(r => ({ x: fromCm[unit](r.cm), f: r.f }));
+  S.spec = {
+    xs, ys, sticks, xmin, xmax, rev, unit, showSticks: $('sticks').checked,
+    yMax: posOrNull($('yMax').value), fMax: posOrNull($('fMax').value),
+    W: Math.round(clamp($('figW').value, 300, 3000, FIG_DEFAULT.figW)),
+    H: Math.round(clamp($('figH').value, 200, 2000, FIG_DEFAULT.figH)),
+    fsTick: clamp($('fsTick').value, 6, 48, FIG_DEFAULT.fsTick),
+    fsLabel: clamp($('fsLabel').value, 6, 48, FIG_DEFAULT.fsLabel),
+  };
+  const { svg, geom } = buildSVG(darkPref() ? PAL_DARK : PAL_LIGHT, S.spec, false);
+  box.innerHTML = svg;
+  box.firstChild.style.maxWidth = S.spec.W + 'px';
+  $('yMax').placeholder = `${t('autoPh')} (${+geom.yAxisMax.toPrecision(4)})`;
+  $('fMax').placeholder = `${t('autoPh')} (${+geom.fAxisMax.toPrecision(4)})`;
+  attachCursor(box.firstChild, geom);
+  updateButtons();
+}
+
+function attachCursor(svg, g) {
+  const grp = svg.querySelector('#cursorG'), line = svg.querySelector('#cursorL'), dot = svg.querySelector('#cursorC');
+  const out = $('readout'), sp = S.spec;
+  const move = e => {
+    const rect = svg.getBoundingClientRect();
+    const px = (e.clientX - rect.left) * g.W / rect.width;
+    if (px < g.m.l || px > g.m.l + g.pw) { grp.setAttribute('display', 'none'); out.textContent = ''; return; }
+    let frac = (px - g.m.l) / g.pw; if (g.rev) frac = 1 - frac;
+    const k = Math.max(0, Math.min(sp.xs.length - 1, Math.round(frac * (sp.xs.length - 1))));
+    const x = g.X(sp.xs[k]);
+    line.setAttribute('x1', x); line.setAttribute('x2', x);
+    dot.setAttribute('cx', x); dot.setAttribute('cy', Math.max(g.m.t, g.Y(sp.ys[k])));
+    grp.setAttribute('display', '');
+    const u = { nm: 'nm', ev: 'eV', cm: '10³ cm⁻¹' }[sp.unit];
+    out.textContent = `${sp.xs[k].toFixed(UNIT_DEC[sp.unit] + (sp.unit === 'cm' ? -1 : 1))} ${u}　ε = ${Math.round(sp.ys[k]).toLocaleString('en-US')} M⁻¹cm⁻¹`;
+  };
+  svg.addEventListener('pointermove', move);
+  svg.addEventListener('pointerleave', () => { grp.setAttribute('display', 'none'); out.textContent = ''; });
+}
+
+function updateButtons() {
+  const has = S.rows.length > 0;
+  $('dlCsv').disabled = $('auto').disabled = !has;
+  $('dlPng').disabled = $('dlSvg').disabled = $('dlSpec').disabled = !S.spec;
+}
+
+/* ---- 計算の詳細 ---- */
+function parseRoute(r) {
+  const out = {};
+  if (!r) return out;
+  const toks = r.replace(/^#\w*\s*/, '').split(/\s+/);
+  for (const tk of toks) { const m = /^([^\/=\s]+)\/(\S+)$/.exec(tk); if (m) { out.func = m[1]; out.basis = m[2]; break; } }
+  const sc = /scrf\s*=\s*(\([^)]*\)|\S+)/i.exec(r);
+  if (sc) out.scrf = sc[1];
+  return out;
+}
+const fmtE = v => v.toFixed(8) + ' Eh';
+
+function infoRows(g) {
+  const i = { ...g.info };
+  for (const k of LATE) if (g.job && g.job[k] !== undefined) i[k] = g.job[k];
+  const rt = parseRoute(i.route);
+  const rows = [];
+  const add = (k, v, cls) => { if (v !== undefined && v !== null && v !== '') rows.push([k, String(v), cls || '']); };
+  add(t('i_file'), S.fileName);
+  add(t('i_prog'), i.ver);
+  add(t('i_route'), i.route, 'wide mono');
+  let func = rt.func || (i.scfLabel ? i.scfLabel.replace(/^(RO|R|U)(?=[A-Z])/, '') : '');
+  if (func) func = func.toUpperCase();
+  add(t('i_func'), func);
+  let basis = rt.basis || i.stdBasis;
+  if (basis && /^gen(ecp)?$/i.test(basis)) basis += t('i_gen');
+  add(t('i_basis'), basis);
+  add(t('i_scrf'), rt.scrf);
+  add(t('i_charge'), i.charge);
+  add(t('i_mult'), i.mult);
+  add(t('i_formula'), i.formula);
+  add(t('i_pg'), i.pg);
+  add(t('i_nbasis'), i.nbasis);
+  if (g.nalpha != null) {
+    add(t('i_nel'), `${g.nalpha} / ${g.nbeta}`);
+    add(t('i_homo'), g.nalpha === g.nbeta ? g.nalpha : `α ${g.nalpha} / β ${g.nbeta}`);
+  }
+  add(t('i_nst'), g.states.length);
+  if (i.scf !== undefined) add(t('i_scf', i.scfLabel), fmtE(i.scf));
+  if (g.tdE !== undefined) add(t('i_td', g.tdN), fmtE(g.tdE));
+  if (i.zpc !== undefined) add(t('i_zpc'), fmtE(i.zpc));
+  if (i.ezpe !== undefined) add(t('i_ezpe'), fmtE(i.ezpe));
+  if (i.enth !== undefined) add(t('i_enth'), fmtE(i.enth));
+  if (i.gibbs !== undefined) add(t('i_gibbs'), fmtE(i.gibbs));
+  if (i.hasFreq) add(t('i_nimag'), (i.nimag || 0) === 0 ? t('i_nimag0') : t('i_nimagN', i.nimag), i.nimag ? 'bad' : '');
+  if (i.optDone) add(t('i_opt'), t('i_optOk'));
+  add(t('i_term'), i.term === 'ok' ? t('tOk') : i.term === 'error' ? t('tErr') : t('tNone'), i.term === 'error' ? 'bad' : '');
+  if (i.elapsed) add(t('i_elapsed'), t('elapsed', i.elapsed.d ? t('days', i.elapsed.d) : '', i.elapsed.h, i.elapsed.m));
+  return rows;
+}
+
+function renderInfo() {
+  const g = S.groups[S.gi], card = $('infoCard');
+  if (!g) { card.hidden = true; return; }
+  let rows;
+  if (g.pre) rows = [[t('i_file'), S.fileName, ''], [t('i_homo'), g.nalpha, ''], [t('i_nst'), g.states.length, ''],
+                     [t('i_note'), t('noteUV'), 'wide']];
+  else rows = infoRows(g);
+  $('info').innerHTML = rows.map(([k, v, c]) => `<div class="it ${c}"><div class="k">${esc(k)}</div><div class="v ${c.includes('mono') ? 'mono' : ''} ${c.includes('bad') ? 'bad' : ''}">${esc(v)}</div></div>`).join('');
+  card.hidden = false;
+}
+
+function recompute() {
+  const g = S.groups[S.gi];
+  S.rows = g ? buildRows(g, parseFloat($('thr').value) || 0) : [];
+  renderInfo();
+  renderTable();
+  renderChart();
+}
+
+/* 左端・右端は「その単位での図の左端／右端の値」。左端 > 右端 なら反転表示。 */
+function setEdges(lo, hi, d) {
+  const rev = $('rev').checked;
+  const [a, b] = rev ? [hi, lo] : [lo, hi];
+  $('xmin').value = d == null ? a : +a.toFixed(d);
+  $('xmax').value = d == null ? b : +b.toFixed(d);
+}
+
+function autoRange() {
+  if (!S.rows.length) return;
+  const unit = $('unit').value, fw = fwhmCm() || 3000;
+  const fmax = Math.max(...S.rows.map(r => r.f));
+  let pk = S.rows.filter(r => r.f >= 0.05 * fmax && r.cm > 0);
+  if (!pk.length) pk = S.rows.filter(r => r.cm > 0);
+  if (!pk.length) return;
+  const lo = Math.max(1, Math.min(...pk.map(r => r.cm)) - fw);
+  const hi = Math.max(...pk.map(r => r.cm)) + fw;
+  let a = fromCm[unit](lo), b = fromCm[unit](hi);
+  if (a > b) [a, b] = [b, a];
+  const step = unit === 'nm' ? 50 : unit === 'ev' ? 0.5 : 1;
+  a = Math.max(unit === 'nm' ? 1 : 0, Math.floor(a / step) * step); b = Math.ceil(b / step) * step;
+  setEdges(a, b);
+  $('yMax').value = ''; $('fMax').value = '';   // 縦軸も自動（データに合わせる）に戻す
+}
+
+function onUnitChange() {
+  const prev = S.unit, next = $('unit').value;
+  const a = parseFloat($('xmin').value), b = parseFloat($('xmax').value);
+  if (isFinite(a) && isFinite(b) && (prev !== 'nm' || (a > 0 && b > 0))) {
+    const x = fromCm[next](toCm[prev](a)), y = fromCm[next](toCm[prev](b));
+    setEdges(Math.min(x, y), Math.max(x, y), UNIT_DEC[next]);
+  }
+  S.unit = next;
+  renderChart();
+}
+
+function onRevToggle() {
+  const a = parseFloat($('xmin').value), b = parseFloat($('xmax').value);
+  if (isFinite(a) && isFinite(b) && (a > b) !== $('rev').checked) { $('xmin').value = b; $('xmax').value = a; }
+  renderChart();
+}
+
+function onFwhmUnitChange() {
+  const v = parseFloat($('fwhm').value);
+  if (!isFinite(v)) return;
+  const toEv = $('fwhmUnit').value === 'ev';
+  $('fwhm').value = toEv ? +(v / EV_TO_CM).toFixed(4) : Math.round(v * EV_TO_CM);
+  renderChart();
+}
+
+function fillBlocks() {
+  const sel = $('block');
+  sel.innerHTML = S.groups.map((g, i) => `<option value="${i}">${esc(t('blockOpt', i + 1, g.states.length))}</option>`).join('');
+  sel.value = S.gi;
+  $('blockRow').hidden = S.groups.length < 2;
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  S.fileName = file.name;
+  setStatus(() => t('parsing', file.name));
+  $('prog').hidden = false; $('prog').value = 0;
+  try {
+    const groups = await parseFile(file, p => { $('prog').value = p; });
+    $('prog').hidden = true;
+    if (!groups.length) {
+      S.groups = []; S.rows = []; S.spec = null; S.emptyKey = 'noExcited';
+      renderInfo(); renderTable(); renderChart(); fillBlocks(); updateButtons();
+      setStatus(() => t('noExcitedStatus'), true);
+      return;
+    }
+    S.groups = groups; S.gi = groups.length - 1;
+    fillBlocks();
+    const g = groups[S.gi];
+    setStatus(() => {
+      const homo = g.nalpha != null ? (g.nalpha === g.nbeta ? `HOMO = ${g.nalpha}` : t('homoOpen', g.nalpha, g.nbeta)) : t('homoUnknown');
+      return t('loaded', file.name, groups.length, groups.length > 1 ? t('lastBlock') : '', g.states.length, homo);
+    });
+    S.rows = buildRows(g, parseFloat($('thr').value) || 0);
+    autoRange();
+    renderInfo(); renderTable(); renderChart();
+  } catch (e) {
+    $('prog').hidden = true;
+    setStatus(() => t('loadFail', e.message), true);
+  }
+}
+
+/* ================= 言語の適用 ================= */
+function applyLang(l) {
+  LANG = l;
+  document.documentElement.lang = l;
+  document.title = t('docTitle');
+  document.querySelectorAll('[data-i18n]').forEach(e => { e.textContent = t(e.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-title]').forEach(e => { e.title = t(e.dataset.i18nTitle); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(e => { e.placeholder = t(e.dataset.i18nPh); });
+  document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === l)));
+  try { localStorage.setItem('tddft-lang', l); } catch (e) { /* ignore */ }
+  renderStatus(); fillBlocks(); renderInfo(); renderTable(); renderChart();
+}
+function initialLang() {
+  try { const s = localStorage.getItem('tddft-lang'); if (s === 'ja' || s === 'en') return s; } catch (e) { /* ignore */ }
+  return /^ja/i.test(navigator.language || '') ? 'ja' : 'en';
+}
+
+/* ================= ダウンロード ================= */
+function download(name, blob) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+const csvCell = v => /[",\n]/.test(v) ? '"' + String(v).replace(/"/g, '""') + '"' : String(v);
+
+function tableCSV() {
+  const lines = [['No.', 'Energy (cm-1)', 'Energy (eV)', 'Wavelength (nm)', 'Osc. Strength', 'Symmetry', 'Major contribs', 'Minor contribs'].join(',')];
+  for (const r of S.rows)
+    lines.push([r.n, r.cm.toFixed(2), r.ev.toFixed(4), isFinite(r.nm) ? r.nm.toFixed(2) : '', r.f.toFixed(4), r.sym, r.major, r.minor].map(csvCell).join(','));
+  return '﻿' + lines.join('\r\n') + '\r\n';
+}
+function spectrumCSV() {
+  const u = { nm: 'Wavelength (nm)', ev: 'Energy (eV)', cm: 'Wavenumber (10^3 cm-1)' }[S.spec.unit];
+  const d = UNIT_DEC[S.spec.unit] + 2;
+  const lines = [`${u},epsilon (M-1 cm-1)`];
+  S.spec.xs.forEach((x, k) => lines.push(`${x.toFixed(d)},${S.spec.ys[k].toFixed(3)}`));
+  return lines.join('\r\n') + '\r\n';
+}
+function exportSVG() { return buildSVG(PAL_LIGHT, S.spec, true).svg; }
+function exportPNG() {
+  const svg = exportSVG();
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas'); c.width = S.spec.W * 3; c.height = S.spec.H * 3;
+    const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, c.width, c.height);
+    c.toBlob(b => download(baseName() + '_spectrum.png', b), 'image/png');
+  };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+/* ================= イベント ================= */
+$('pick').onclick = () => $('file').click();
+$('file').onchange = e => { handleFile(e.target.files[0]); e.target.value = ''; };
+const drop = $('drop');
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => e.preventDefault());
+
+$('block').onchange = e => { S.gi = +e.target.value; recompute(); };
+$('unit').onchange = onUnitChange;
+$('rev').onchange = onRevToggle;
+['figW', 'figH', 'fsTick', 'fsLabel', 'yMax', 'fMax'].forEach(id => $(id).addEventListener('input', renderChart));
+$('figReset').onclick = () => { for (const k in FIG_DEFAULT) $(k).value = FIG_DEFAULT[k]; renderChart(); };
+$('fwhmUnit').onchange = onFwhmUnitChange;
+['xmin', 'xmax', 'fwhm'].forEach(id => $(id).addEventListener('input', renderChart));
+['profile', 'sticks'].forEach(id => $(id).addEventListener('change', renderChart));
+$('thr').addEventListener('input', recompute);
+$('auto').onclick = () => { autoRange(); renderChart(); };
+$('dlCsv').onclick = () => download(baseName() + '_transitions.csv', new Blob([tableCSV()], { type: 'text/csv;charset=utf-8' }));
+$('dlSpec').onclick = () => download(baseName() + '_spectrum.csv', new Blob([spectrumCSV()], { type: 'text/csv;charset=utf-8' }));
+$('dlSvg').onclick = () => download(baseName() + '_spectrum.svg', new Blob([exportSVG()], { type: 'image/svg+xml' }));
+$('dlPng').onclick = exportPNG;
+document.querySelectorAll('.lang button').forEach(b => { b.onclick = () => applyLang(b.dataset.lang); });
+if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderChart);
+applyLang(initialLang());
+</script>
+</body>
+</html>

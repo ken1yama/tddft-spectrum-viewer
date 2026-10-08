@@ -1,0 +1,7 @@
+# Local test data (calculation outputs) – do not publish
+test/
+*.out
+*.log
+
+# Tool settings
+.claude/
