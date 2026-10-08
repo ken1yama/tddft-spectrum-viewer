@@ -191,6 +191,14 @@ const RE_SCF = /SCF Done:\s+E\((\S+)\)\s+=\s+(-?\d+\.\d+)/;
 const RE_NUM = /=\s+(-?\d+\.\d+)/;
 const LATE = ['term', 'elapsed', 'zpc', 'ezpe', 'enth', 'gibbs', 'hasFreq', 'nimag', 'optDone'];
 
+// Gaussian は長いルート行を一定幅で折り返す（単語の途中でも切れる）。
+// 折り返しの行（幅いっぱいの行）の直後は空白を入れずに連結する。
+function joinRoute(lines) {
+  let out = lines[0].trim();
+  for (let i = 1; i < lines.length; i++) out += (lines[i - 1].length >= 70 ? '' : ' ') + lines[i].trim();
+  return out.replace(/\s+/g, ' ');
+}
+
 class Parser {
   constructor() {
     this.nalpha = null; this.nbeta = null;
@@ -207,7 +215,7 @@ class Parser {
     const j = this.job;
     if (s.startsWith(' SCF Done:')) { const m = RE_SCF.exec(s); if (m) { j.scfLabel = m[1]; j.scf = parseFloat(m[2]); } }
     else if (s.startsWith(' Charge =')) { const m = /Charge =\s*(-?\d+)\s+Multiplicity =\s*(\d+)/.exec(s); if (m) { j.charge = +m[1]; j.mult = +m[2]; } }
-    else if (s.startsWith(' Stoichiometry')) j.formula = s.slice(14).trim();
+    else if (s.startsWith(' Stoichiometry')) j.formula = s.slice(14).trim().replace(/\(\S*\)$/, '');   // 末尾の電荷・多重度 (2-,2) は除く
     else if (s.includes('Full point group')) { const m = /Full point group\s+(\S+)/.exec(s); if (m) j.pg = m[1]; }
     else if (s.includes('NBasis=')) { const m = /NBasis=\s*(\d+)/.exec(s); if (m) j.nbasis = +m[1]; }
     else if (s.includes('Standard basis:')) j.stdBasis = s.slice(s.indexOf(':') + 1).trim();
@@ -239,11 +247,11 @@ class Parser {
   line(s) {
     // ルート行: ダッシュ線の直後の '#' で始まる行（複数行に続くことがある）
     if (this.rs === 2) {
-      if (s.startsWith(' ---')) { this.rs = 0; this.job.route = this.routeBuf.join(' ').replace(/\s+/g, ' ').trim(); }
-      else { this.routeBuf.push(s.trim()); return; }
+      if (s.startsWith(' ---')) { this.rs = 0; this.job.route = joinRoute(this.routeBuf); }
+      else { this.routeBuf.push(s.replace(/\s+$/, '')); return; }
     } else if (this.rs === 1) {
       this.rs = 0;
-      if (s.trimStart().startsWith('#')) { this.job = {}; this.rs = 2; this.routeBuf = [s.trim()]; return; }
+      if (s.trimStart().startsWith('#')) { this.job = {}; this.rs = 2; this.routeBuf = [s.replace(/\s+$/, '')]; return; }
     }
     if (s.startsWith(' ---')) { this.rs = 1; return; }
 

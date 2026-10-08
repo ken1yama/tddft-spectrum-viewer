@@ -38,7 +38,7 @@ A browser-based tool that reads the TDDFT output (`.out` / `.log`) of Gaussian a
 
 ### Tested with
 
-Gaussian 16 TD-DFT output (closed shell). Open-shell, frequency and solvent handling have been checked only with synthetic data – feedback with real outputs is welcome.
+Gaussian 16 TD-DFT output, closed shell (RB3LYP) and open shell (UCAM-B3LYP, doublet and triplet, `td=(full)`, SCRF, `genecp`). Frequency-job information has been checked only with synthetic data – feedback with real outputs is welcome.
 
 ### License
 
@@ -80,7 +80,7 @@ Gaussian の TDDFT 計算の出力ファイル（`.out` / `.log`）を読み込�
 
 ### 動作確認
 
-Gaussian 16 の TD-DFT 出力（閉殻）で確認しています。開殻、振動計算、溶媒の扱いは、人工的なデータでのみ確認しています。実際の出力でうまく動かない場合は、ぜひ教えてください。
+Gaussian 16 の TD-DFT 出力で、閉殻（RB3LYP）と開殻（UCAM-B3LYP、二重項・三重項、`td=(full)`、SCRF、`genecp`）を確認しています。振動計算に関する情報の表示は、人工的なデータでのみ確認しています。実際の出力でうまく動かない場合は、ぜひ教えてください。
 
 ### ライセンス
 
