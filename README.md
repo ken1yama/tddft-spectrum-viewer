@@ -1,5 +1,7 @@
 # TDDFT Spectrum Viewer
 
+**Live app / 公開ページ: https://ken1yama.github.io/tddft-spectrum-viewer/**
+
 [English](#english) | [日本語](#日本語)
 
 ---
@@ -12,7 +14,7 @@ A browser-based tool that reads the TDDFT output (`.out` / `.log`) of Gaussian a
 
 ### Usage
 
-1. Open `index.html` in a browser (or host it on any static web server, e.g. GitHub Pages).
+1. Open the [live app](https://ken1yama.github.io/tddft-spectrum-viewer/) – nothing to install or download. (You can also save `index.html` and open it locally, or host it on any static web server.)
 2. Drop a Gaussian output file onto the page, or choose it with the button.
 3. Adjust the spectrum and download what you need.
 
@@ -54,7 +56,7 @@ Gaussian の TDDFT 計算の出力ファイル（`.out` / `.log`）を読み込�
 
 ### 使い方
 
-1. `index.html` をブラウザで開きます（GitHub Pages など、静的な Web サーバーに置いても動きます）。
+1. [公開ページ](https://ken1yama.github.io/tddft-spectrum-viewer/)を開きます。インストールもダウンロードも不要です。（`index.html` を保存して手元で開くことも、静的な Web サーバーに置くこともできます。）
 2. Gaussian の出力ファイルをページにドロップするか、ボタンで選択します。
 3. スペクトルを調整し、必要なものをダウンロードします。
 
