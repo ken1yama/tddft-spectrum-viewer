@@ -2,6 +2,8 @@
 
 **Live app / 公開ページ: https://ken1yama.github.io/tddft-spectrum-viewer/**
 
+関連ツール / Related tool: [Gaussian / ORCA Output Parser](https://ken1yama.github.io/gaussian-orca-parser/)([GitHub](https://github.com/ken1yama/gaussian-orca-parser))— 複数ファイルのエネルギー・NImag などを表にまとめ、エネルギー差も計算して CSV 出力 / tabulate energies, NImag etc. across many files, compute energy differences, export CSV
+
 [English](#english) | [日本語](#日本語)
 
 ---
