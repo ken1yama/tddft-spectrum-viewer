@@ -44,6 +44,10 @@ A browser-based tool that reads the TDDFT output (`.out` / `.log`) of Gaussian a
 
 Gaussian 16 TD-DFT output, closed shell (RB3LYP) and open shell (UCAM-B3LYP, doublet and triplet, `td=(full)`, SCRF, `genecp`). Frequency-job information has been checked only with synthetic data – feedback with real outputs is welcome.
 
+### Versioning
+
+[Semantic Versioning](https://semver.org/). The version is shown at the bottom of the page, and changes are listed in [CHANGELOG.md](CHANGELOG.md). Each release is tagged `vX.Y.Z`.
+
 ### License
 
 MIT – see [LICENSE](LICENSE).
@@ -85,6 +89,10 @@ Gaussian の TDDFT 計算の出力ファイル（`.out` / `.log`）を読み込�
 ### 動作確認
 
 Gaussian 16 の TD-DFT 出力で、閉殻（RB3LYP）と開殻（UCAM-B3LYP、二重項・三重項、`td=(full)`、SCRF、`genecp`）を確認しています。振動計算に関する情報の表示は、人工的なデータでのみ確認しています。実際の出力でうまく動かない場合は、ぜひ教えてください。
+
+### バージョン管理
+
+[セマンティック バージョニング](https://semver.org/lang/ja/)に従います。バージョンはページの最下部に表示され、変更点は [CHANGELOG.md](CHANGELOG.md) にまとめます。リリースごとに `vX.Y.Z` のタグを付けます。
 
 ### ライセンス
 

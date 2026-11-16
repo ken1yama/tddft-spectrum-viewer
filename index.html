@@ -173,11 +173,14 @@ progress{width:100%;height:6px;margin-top:8px}
     </tr></thead><tbody></tbody></table></div>
   </div>
 
+  <p class="foot" id="verLine"><span id="ver"></span> · <a href="https://github.com/ken1yama/tddft-spectrum-viewer" target="_blank" rel="noopener">GitHub</a> · MIT License</p>
   <p class="foot"><span data-i18n="relatedLabel"></span> <a href="https://ken1yama.github.io/gaussian-orca-parser/" target="_blank" rel="noopener" data-i18n="relatedName"></a> <span data-i18n="relatedDesc"></span></p>
 </div>
 
 <script>
 'use strict';
+/* アプリのバージョン（セマンティック バージョニング）。変更時は CHANGELOG.md と git タグも更新する。 */
+const APP_VERSION = '0.1.0';
 /* ================= 定数・単位 ================= */
 const EV_TO_CM = 8065.543937;            // 1 eV = 8065.54 cm^-1
 const toCm   = { nm: x => 1e7 / x, ev: x => x * EV_TO_CM, cm: x => x * 1000 };
@@ -871,6 +874,7 @@ $('dlSvg').onclick = () => download(baseName() + '_spectrum.svg', new Blob([expo
 $('dlPng').onclick = exportPNG;
 document.querySelectorAll('.lang button').forEach(b => { b.onclick = () => applyLang(b.dataset.lang); });
 if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderChart);
+$('ver').textContent = 'TDDFT Spectrum Viewer v' + APP_VERSION;
 applyLang(initialLang());
 </script>
 </body>
