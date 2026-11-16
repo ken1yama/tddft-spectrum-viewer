@@ -718,12 +718,12 @@ function setEdges(lo, hi, d) {
 function autoRange() {
   if (!S.rows.length) return;
   const unit = $('unit').value, fw = fwhmCm() || 3000;
-  const fmax = Math.max(...S.rows.map(r => r.f));
-  let pk = S.rows.filter(r => r.f >= 0.05 * fmax && r.cm > 0);
-  if (!pk.length) pk = S.rows.filter(r => r.cm > 0);
+  // 振動子強度の大きさによらず、すべての遷移が入る範囲にする（両側に FWHM 1 本分の余白）
+  const pk = S.rows.filter(r => r.cm > 0);
   if (!pk.length) return;
-  const lo = Math.max(1, Math.min(...pk.map(r => r.cm)) - fw);
-  const hi = Math.max(...pk.map(r => r.cm)) + fw;
+  const nuLo = Math.min(...pk.map(r => r.cm)), nuHi = Math.max(...pk.map(r => r.cm));
+  const lo = nuLo - Math.min(fw, nuLo * 0.5);     // 低波数側が 0 以下にならないようにする
+  const hi = nuHi + fw;
   let a = fromCm[unit](lo), b = fromCm[unit](hi);
   if (a > b) [a, b] = [b, a];
   const step = unit === 'nm' ? 50 : unit === 'ev' ? 0.5 : 1;
